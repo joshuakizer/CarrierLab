@@ -29,6 +29,34 @@ public struct ExperimentEvidenceAttachment: Identifiable, Equatable, Codable {
     }
 }
 
+/// An immutable audit correction record documenting a post-hoc reclassification without rewriting the original record.
+public struct ExperimentAuditCorrection: Identifiable, Equatable, Codable {
+    public let id: String
+    public let targetExperimentId: String
+    public let timestamp: Date
+    public let previousOutcome: String
+    public let correctedOutcome: ExperimentOutcome
+    public let auditorReason: String
+    public let auditSignature: String
+    
+    public init(
+        targetExperimentId: String,
+        previousOutcome: String,
+        correctedOutcome: ExperimentOutcome,
+        auditorReason: String,
+        timestamp: Date = Date()
+    ) {
+        self.id = "CORRECTION-\(targetExperimentId)"
+        self.targetExperimentId = targetExperimentId
+        self.timestamp = timestamp
+        self.previousOutcome = previousOutcome
+        self.correctedOutcome = correctedOutcome
+        self.auditorReason = auditorReason
+        let sig = "CORRECTION|\(targetExperimentId)|\(previousOutcome)|\(correctedOutcome.rawValue)|\(timestamp.timeIntervalSince1970)"
+        self.auditSignature = EvidenceHasher.sha256(string: sig)
+    }
+}
+
 /// Complete, immutable record of an alternate-carrier eSIM experiment.
 public struct CarrierExperiment: Identifiable, Equatable, Codable {
     public let id: String
@@ -43,6 +71,7 @@ public struct CarrierExperiment: Identifiable, Equatable, Codable {
     // Experiment Parameters & Step-by-Step Observations
     public var targetCarrier: String // e.g. "AT&T", "T-Mobile"
     public var activationMethod: String // "Settings > Cellular > Add eSIM"
+    public var physicalAttemptConducted: Bool
     public var eSIMInstalled: Bool
     public var cellularRegistrationOccurred: Bool
     public var cellularDataWorked: Bool
@@ -54,8 +83,13 @@ public struct CarrierExperiment: Identifiable, Equatable, Codable {
     public var attachedEvidence: [ExperimentEvidenceAttachment]
     public var comparisonResult: ExperimentComparisonResult?
     public var outcome: ExperimentOutcome
+    public var auditCorrection: ExperimentAuditCorrection?
     public var researcherNotes: String
     public var rebootPersistenceVerified: Bool
+    
+    public var effectiveOutcome: ExperimentOutcome {
+        auditCorrection?.correctedOutcome ?? outcome
+    }
     
     // Cryptographic Record Integrity Signature (SHA-256)
     public var recordIntegrityHash: String
@@ -69,6 +103,7 @@ public struct CarrierExperiment: Identifiable, Equatable, Codable {
         finalBaseline: ExperimentBaseline? = nil,
         targetCarrier: String = "T-Mobile",
         activationMethod: String = "Supported iOS Settings > Cellular > Add eSIM",
+        physicalAttemptConducted: Bool = false,
         eSIMInstalled: Bool = false,
         cellularRegistrationOccurred: Bool = false,
         cellularDataWorked: Bool = false,
@@ -78,6 +113,7 @@ public struct CarrierExperiment: Identifiable, Equatable, Codable {
         attachedEvidence: [ExperimentEvidenceAttachment] = [],
         comparisonResult: ExperimentComparisonResult? = nil,
         outcome: ExperimentOutcome = .inconclusive,
+        auditCorrection: ExperimentAuditCorrection? = nil,
         researcherNotes: String = "",
         rebootPersistenceVerified: Bool = false
     ) {
@@ -89,6 +125,7 @@ public struct CarrierExperiment: Identifiable, Equatable, Codable {
         self.finalBaseline = finalBaseline
         self.targetCarrier = targetCarrier
         self.activationMethod = activationMethod
+        self.physicalAttemptConducted = physicalAttemptConducted
         self.eSIMInstalled = eSIMInstalled
         self.cellularRegistrationOccurred = cellularRegistrationOccurred
         self.cellularDataWorked = cellularDataWorked
@@ -98,10 +135,11 @@ public struct CarrierExperiment: Identifiable, Equatable, Codable {
         self.attachedEvidence = attachedEvidence
         self.comparisonResult = comparisonResult
         self.outcome = outcome
+        self.auditCorrection = auditCorrection
         self.researcherNotes = researcherNotes
         self.rebootPersistenceVerified = rebootPersistenceVerified
         
-        let sig = "\(id)|\(startTimestamp)|\(redactedDeviceIdentifier)|\(targetCarrier)|\(eSIMInstalled)|\(outcome.rawValue)|\(initialBaseline.snapshotChecksum)"
+        let sig = "\(id)|\(startTimestamp)|\(redactedDeviceIdentifier)|\(targetCarrier)|\(physicalAttemptConducted)|\(eSIMInstalled)|\(outcome.rawValue)|\(initialBaseline.snapshotChecksum)"
         self.recordIntegrityHash = EvidenceHasher.sha256(string: sig)
     }
     
@@ -119,8 +157,34 @@ public struct CarrierExperiment: Identifiable, Equatable, Codable {
         - **Target Alternative Carrier:** `\(targetCarrier)`
         - **Start Time:** `\(startStr)`
         - **Completion Time:** `\(endStr)`
-        - **Outcome Classification:** **\(outcome.rawValue)**
+        - **Physical Activation Attempt Conducted:** \(physicalAttemptConducted ? "YES (On-Device Attempt)" : "NO (Demonstration / Software Session Only)")
+        - **Verification Scope:** \(comparisonResult?.verificationScope ?? (physicalAttemptConducted ? "Owner-Reported" : "Not Performed"))
+        - **Outcome Classification:** **\(effectiveOutcome.rawValue)**\(auditCorrection != nil ? " [AUDIT CORRECTED]" : "")
         - **Cryptographic Record Signature (SHA-256):** `\(recordIntegrityHash)`
+        """
+        
+        if let correction = auditCorrection {
+            md += """
+            
+            > [!CAUTION] **AUDIT CORRECTION APPLIED**
+            > - **Original Classification:** `\(correction.previousOutcome)`
+            > - **Corrected Classification:** `\(correction.correctedOutcome.rawValue)`
+            > - **Audit Reason:** \(correction.auditorReason)
+            > - **Correction Timestamp:** `\(formatter.string(from: correction.timestamp))`
+            > - **Audit Signature:** `\(correction.auditSignature)`
+            
+            """
+        } else if !physicalAttemptConducted {
+            md += """
+            
+            > [!WARNING] **DEMONSTRATION ONLY / NOT PERFORMED**
+            > No physical alternate-carrier eSIM was introduced to the device during this session.
+            > Classified as **Not Performed** to prevent false verification claims.
+            
+            """
+        }
+        
+        md += """
         
         ---
         
@@ -131,7 +195,7 @@ public struct CarrierExperiment: Identifiable, Equatable, Codable {
         
         ---
         
-        ## 2. Initial Pre-Test Baseline
+        ## 2. Initial Pre-Test Hardware Baseline (Independently Queried via lockdownd)
         - **ProductType:** `\(initialBaseline.observed.productType ?? "None")`
         - **ProductVersion (iOS):** `\(initialBaseline.observed.productVersion ?? "None")`
         - **BuildVersion:** `\(initialBaseline.observed.buildVersion ?? "None")`
@@ -139,18 +203,19 @@ public struct CarrierExperiment: Identifiable, Equatable, Codable {
         - **BasebandStatus:** `\(initialBaseline.observed.basebandStatus ?? "None")`
         - **ActivationState:** `\(initialBaseline.observed.activationState ?? "None")`
         - **SIMStatus:** `\(initialBaseline.observed.simStatus ?? "None")`
-        - **Carrier Lock Setting (Settings > General > About):** `\(initialBaseline.ownerConfirmed.carrierLockSetting)`
+        - **Carrier Lock Setting (Settings > General > About):** `\(initialBaseline.ownerConfirmed.carrierLockSetting)` (Owner Confirmed)
         - **Baseline SHA-256:** `\(initialBaseline.snapshotChecksum)`
         
         ---
         
-        ## 3. Alternate-Carrier Test Execution Observations
+        ## 3. Alternate-Carrier Test Execution Observations (Owner-Reported)
         - **Intended Carrier:** `\(targetCarrier)`
+        - **Physical Device Attempt Made:** \(physicalAttemptConducted ? "Yes" : "No")
         - **eSIM Installation Succeeded:** \(eSIMInstalled ? "Yes" : "No")
         - **Cellular Network Registration Occurred:** \(cellularRegistrationOccurred ? "Yes" : "No")
         - **Cellular Data Functional:** \(cellularDataWorked ? "Yes" : "No")
         - **Test Voice Call Succeeded:** \(testCallSucceeded == nil ? "Not tested" : (testCallSucceeded! ? "Yes" : "No"))
-        - **Observed Error Messages:**
+        - **Observed Error Messages (Manual Entry):**
         """
         
         if exactErrorMessages.isEmpty {

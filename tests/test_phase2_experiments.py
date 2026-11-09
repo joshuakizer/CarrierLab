@@ -80,7 +80,7 @@ class Phase2ExperimentManager:
             "snapshot_checksum": checksum
         }
 
-    def compare_baselines(self, initial: dict, final: dict, esim_installed: bool, data_worked: bool, reboot_confirmed: bool = False, original_verizon_intact: bool = True) -> dict:
+    def compare_baselines(self, initial: dict, final: dict, esim_installed: bool, data_worked: bool, reboot_confirmed: bool = False, original_verizon_intact: bool = True, physical_attempt_conducted: bool = False, has_supporting_evidence: bool = False) -> dict:
         init_obs = initial["device_observed"]
         final_obs = final["device_observed"]
         init_lock = initial["owner_confirmed"]["carrier_lock_setting"]
@@ -95,7 +95,9 @@ class Phase2ExperimentManager:
             "initial_lock": init_lock,
             "final_lock": final_lock,
             "reboot_confirmed": reboot_confirmed,
-            "original_verizon_intact": original_verizon_intact
+            "original_verizon_intact": original_verizon_intact,
+            "physical_attempt_conducted": physical_attempt_conducted,
+            "has_supporting_evidence": has_supporting_evidence
         }
         
         # Classification Engine
@@ -103,14 +105,22 @@ class Phase2ExperimentManager:
             diff["outcome"] = "Unexpected Behavior Requiring Investigation"
             diff["is_permanent_unlock_verified"] = False
             diff["justification"] = "CRITICAL SAFETY VIOLATION: Primary Verizon eSIM was modified or removed. Test invalidated."
-        elif "No SIM" in final_lock and reboot_confirmed:
+        elif not physical_attempt_conducted:
+            diff["outcome"] = "Not Performed"
+            diff["is_permanent_unlock_verified"] = False
+            diff["justification"] = "No physical alternate-carrier activation attempt was conducted on the device. Experiment conducted entirely within software."
+        elif "No SIM" in final_lock and reboot_confirmed and data_worked:
             diff["outcome"] = "Carrier Lock Changed Following Authorized Unlock"
             diff["is_permanent_unlock_verified"] = True
             diff["justification"] = "Carrier Lock officially transitioned to No SIM Restrictions and persisted across device reboot."
+        elif not has_supporting_evidence and not esim_installed and not data_worked:
+            diff["outcome"] = "Inconclusive"
+            diff["is_permanent_unlock_verified"] = False
+            diff["justification"] = "Physical activation attempt reported, but without corroborating error messages or evidence."
         elif not esim_installed or (not data_worked and "Locked" in final_lock):
             diff["outcome"] = "Carrier Restriction Enforced"
             diff["is_permanent_unlock_verified"] = False
-            diff["justification"] = "Alternative carrier rejected or non-operational under active Verizon lock policy. Normal enforcement verified."
+            diff["justification"] = "Owner reported alternate carrier rejected under active Verizon lock. (Owner-reported observation; not baseband verified)."
         elif data_worked and "Locked" in final_lock:
             diff["outcome"] = "Alternative Carrier Activated (Lock Unchanged)"
             diff["is_permanent_unlock_verified"] = False
@@ -129,7 +139,7 @@ class Phase2ExperimentManager:
             raise FileExistsError(f"Experiment '{exp_id}' already exists. Silent overwrite is blocked.")
             
         # Compute integrity hash
-        sig_str = f"{exp_id}|{exp.get('start_time')}|{exp.get('target_carrier')}|{exp.get('esim_installed')}|{exp.get('outcome')}"
+        sig_str = f"{exp_id}|{exp.get('start_time')}|{exp.get('target_carrier')}|{exp.get('physical_attempt_conducted', False)}|{exp.get('esim_installed')}|{exp.get('outcome')}"
         exp["record_integrity_hash"] = Phase2EvidenceHasher.sha256_string(sig_str)
         
         with open(json_path, "w", encoding="utf-8") as f:
@@ -137,11 +147,41 @@ class Phase2ExperimentManager:
             
         return json_path
 
+    def save_audit_correction(self, target_id: str, prev_outcome: str, corrected_outcome: str, reason: str) -> Path:
+        corr_id = f"CORRECTION-{target_id}"
+        corr_record = {
+            "correction_id": corr_id,
+            "target_experiment_id": target_id,
+            "timestamp": "2026-11-09T01:55:00Z",
+            "previous_outcome": prev_outcome,
+            "corrected_outcome": corrected_outcome,
+            "auditor_reason": reason,
+            "audit_status": "AUDIT_CORRECTED"
+        }
+        json_path = self.base_dir / f"{corr_id}.json"
+        with open(json_path, "w", encoding="utf-8") as f:
+            json.dump(corr_record, f, indent=2)
+        return json_path
+
     def load_all_experiments(self) -> list:
         exps = []
-        for p in self.base_dir.glob("*.json"):
+        corrections = {}
+        for p in self.base_dir.glob("CORRECTION-*.json"):
             with open(p, "r", encoding="utf-8") as f:
-                exps.append(json.load(f))
+                c = json.load(f)
+                corrections[c["target_experiment_id"]] = c
+                
+        for p in self.base_dir.glob("*.json"):
+            if p.name.startswith("CORRECTION-"):
+                continue
+            with open(p, "r", encoding="utf-8") as f:
+                exp = json.load(f)
+                if exp.get("experiment_id") in corrections:
+                    exp["audit_correction"] = corrections[exp["experiment_id"]]
+                    exp["effective_outcome"] = corrections[exp["experiment_id"]]["corrected_outcome"]
+                else:
+                    exp["effective_outcome"] = exp.get("outcome")
+                exps.append(exp)
         return sorted(exps, key=lambda x: x.get("start_time", ""), reverse=True)
 
 
@@ -190,8 +230,8 @@ class TestPhase2Experiments(unittest.TestCase):
         init = self.mgr.capture_baseline(diag, manual_lock_setting="SIM Locked")
         final = self.mgr.capture_baseline(diag, manual_lock_setting="SIM Locked")
         
-        # Alternate carrier failed to install/rejected
-        diff = self.mgr.compare_baselines(init, final, esim_installed=False, data_worked=False, reboot_confirmed=False)
+        # Alternate carrier failed to install/rejected with physical attempt and evidence
+        diff = self.mgr.compare_baselines(init, final, esim_installed=False, data_worked=False, reboot_confirmed=False, physical_attempt_conducted=True, has_supporting_evidence=True)
         self.assertEqual(diff["outcome"], "Carrier Restriction Enforced")
         self.assertFalse(diff["is_permanent_unlock_verified"])
 
@@ -201,7 +241,7 @@ class TestPhase2Experiments(unittest.TestCase):
         final = self.mgr.capture_baseline(diag, manual_lock_setting="SIM Locked")
         
         # Alternate carrier installed and data worked, but Settings still reports SIM locked
-        diff = self.mgr.compare_baselines(init, final, esim_installed=True, data_worked=True, reboot_confirmed=False)
+        diff = self.mgr.compare_baselines(init, final, esim_installed=True, data_worked=True, reboot_confirmed=False, physical_attempt_conducted=True, has_supporting_evidence=True)
         self.assertEqual(diff["outcome"], "Alternative Carrier Activated (Lock Unchanged)")
         self.assertFalse(diff["is_permanent_unlock_verified"])
 
@@ -211,13 +251,77 @@ class TestPhase2Experiments(unittest.TestCase):
         final = self.mgr.capture_baseline(diag, manual_lock_setting="No SIM Restrictions")
         
         # Test 1: Reports No SIM Restrictions, but reboot persistence NOT confirmed -> Unlock NOT verified
-        diff_unconfirmed = self.mgr.compare_baselines(init, final, esim_installed=True, data_worked=True, reboot_confirmed=False)
+        diff_unconfirmed = self.mgr.compare_baselines(init, final, esim_installed=True, data_worked=True, reboot_confirmed=False, physical_attempt_conducted=True, has_supporting_evidence=True)
         self.assertFalse(diff_unconfirmed["is_permanent_unlock_verified"])
         
         # Test 2: Reports No SIM Restrictions, AND reboot persistence IS confirmed -> Unlock verified
-        diff_confirmed = self.mgr.compare_baselines(init, final, esim_installed=True, data_worked=True, reboot_confirmed=True)
+        diff_confirmed = self.mgr.compare_baselines(init, final, esim_installed=True, data_worked=True, reboot_confirmed=True, physical_attempt_conducted=True, has_supporting_evidence=True)
         self.assertEqual(diff_confirmed["outcome"], "Carrier Lock Changed Following Authorized Unlock")
         self.assertTrue(diff_confirmed["is_permanent_unlock_verified"])
+
+    def test_unperformed_experiment_classified_as_not_performed(self):
+        diag = {"ProductType": "iPhone19,4", "BuildVersion": "24B91020", "BasebandVersion": "1.02.05"}
+        init = self.mgr.capture_baseline(diag, manual_lock_setting="SIM Locked")
+        final = self.mgr.capture_baseline(diag, manual_lock_setting="SIM Locked")
+        
+        # Physical attempt was NOT conducted (software session only)
+        diff = self.mgr.compare_baselines(init, final, esim_installed=False, data_worked=False, reboot_confirmed=False, physical_attempt_conducted=False, has_supporting_evidence=False)
+        self.assertEqual(diff["outcome"], "Not Performed")
+        self.assertFalse(diff["is_permanent_unlock_verified"])
+        self.assertIn("No physical alternate-carrier activation attempt was conducted", diff["justification"])
+
+    def test_incomplete_evidence_classified_as_inconclusive(self):
+        diag = {"ProductType": "iPhone19,4", "BuildVersion": "24B91020", "BasebandVersion": "1.02.05"}
+        init = self.mgr.capture_baseline(diag, manual_lock_setting="SIM Locked")
+        final = self.mgr.capture_baseline(diag, manual_lock_setting="SIM Locked")
+        
+        # Physical attempt reported, but zero error messages or evidence
+        diff = self.mgr.compare_baselines(init, final, esim_installed=False, data_worked=False, reboot_confirmed=False, physical_attempt_conducted=True, has_supporting_evidence=False)
+        self.assertEqual(diff["outcome"], "Inconclusive")
+        self.assertFalse(diff["is_permanent_unlock_verified"])
+        self.assertIn("without corroborating error messages", diff["justification"])
+
+    def test_audit_correction_exp1794188993_preserves_original_and_amends_outcome(self):
+        diag = {"ProductType": "iPhone19,4", "BuildVersion": "24B91020"}
+        base = self.mgr.capture_baseline(diag)
+        
+        # Save original erroneous experiment
+        exp = {
+            "experiment_id": "EXP-1794188993",
+            "start_time": "2026-11-08T18:00:00Z",
+            "target_carrier": "AT&T",
+            "physical_attempt_conducted": False,
+            "esim_installed": False,
+            "outcome": "Carrier Restriction Enforced",
+            "initial_baseline": base
+        }
+        self.mgr.save_experiment(exp, allow_overwrite=True)
+        
+        # Verify original file content on disk has the historical outcome
+        json_file = self.temp_dir / "EXP-1794188993.json"
+        with open(json_file, "r") as f:
+            content = f.read()
+            self.assertIn("Carrier Restriction Enforced", content)
+            
+        # Save audit correction
+        self.mgr.save_audit_correction(
+            target_id="EXP-1794188993",
+            prev_outcome="Carrier Restriction Enforced",
+            corrected_outcome="Not Performed",
+            reason="Audit established experiment was executed entirely within CarrierLab without physical attempt on device."
+        )
+        
+        # Load experiments through manager
+        loaded = self.mgr.load_all_experiments()
+        matching = next(x for x in loaded if x["experiment_id"] == "EXP-1794188993")
+        self.assertEqual(matching["effective_outcome"], "Not Performed")
+        self.assertIn("audit_correction", matching)
+        self.assertEqual(matching["audit_correction"]["corrected_outcome"], "Not Performed")
+        
+        # Verify original file on disk was NOT mutated or overwritten
+        with open(json_file, "r") as f:
+            content_post = f.read()
+            self.assertIn("Carrier Restriction Enforced", content_post)
 
     def test_experiment_persistence_and_silent_overwrite_prevention(self):
         diag = {"ProductType": "iPhone19,4", "BuildVersion": "24B91020"}

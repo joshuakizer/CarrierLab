@@ -127,6 +127,17 @@ public struct CarrierLockResearchView: View {
                     .frame(width: 8, height: 8)
             }
             
+            if !mainVM.connectionStatus.isConnected {
+                HStack(spacing: 6) {
+                    Image(systemName: "clock.arrow.circlepath").foregroundColor(.orange)
+                    Text("Historical / Cached Snapshot (Device Disconnected)")
+                        .font(.caption).bold().foregroundColor(.orange)
+                }
+                .padding(6)
+                .background(Color.orange.opacity(0.12))
+                .cornerRadius(6)
+            }
+            
             Divider()
             
             GridRow(label: "Device Model:", value: mainVM.deviceDiagnostics?.marketingName ?? "iPhone Duo (iPhone19,4)")
@@ -280,6 +291,17 @@ public struct CarrierLockResearchView: View {
             Text("Step 3: Record On-Device Test Observations")
                 .font(.title3).bold()
             
+            // Physical Device Test Acknowledgment
+            VStack(alignment: .leading, spacing: 6) {
+                Toggle("Physical alternate-carrier activation was attempted on connected iPhone", isOn: $researchVM.physicalDeviceTestAttempted)
+                    .font(.subheadline).bold()
+                Text("Required: Leaving this off records the experiment as Not Performed / Demonstration Only to prevent false verification claims.")
+                    .font(.caption).foregroundColor(.secondary)
+            }
+            .padding(10)
+            .background(researchVM.physicalDeviceTestAttempted ? Color.blue.opacity(0.08) : Color.orange.opacity(0.12))
+            .cornerRadius(8)
+            
             VStack(alignment: .leading, spacing: 10) {
                 Toggle("eSIM Profile Installed in Cellular Settings", isOn: $researchVM.eSIMInstalled)
                 Toggle("Cellular Network Registration Occurred on \(researchVM.targetCarrier)", isOn: $researchVM.cellularRegistrationOccurred)
@@ -289,14 +311,32 @@ public struct CarrierLockResearchView: View {
                     .foregroundColor(.green)
             }
             .font(.subheadline)
+            .disabled(!researchVM.physicalDeviceTestAttempted)
             
             VStack(alignment: .leading, spacing: 4) {
-                Text("Exact Error Messages Displayed by iOS:").font(.caption).bold()
+                HStack {
+                    Text("Exact Error Messages Displayed by iOS:").font(.caption).bold()
+                    Spacer()
+                    Menu("Insert Sample Template...") {
+                        ForEach(CarrierLockResearchViewModel.sampleErrorTemplates, id: \.self) { tmpl in
+                            Button(tmpl) {
+                                researchVM.insertSampleErrorTemplate(tmpl)
+                            }
+                        }
+                    }
+                    .font(.caption)
+                }
+                
                 TextEditor(text: $researchVM.observedErrorText)
                     .frame(height: 70)
                     .font(.system(.body, design: .monospaced))
                     .padding(4)
                     .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.3)))
+                
+                if researchVM.isUsingSampleErrorTemplate {
+                    Text("Notice: Using sample template. Manual input does not constitute independent baseband telemetry verification.")
+                        .font(.caption2).foregroundColor(.orange)
+                }
             }
             
             // Screenshot Attachment Bar
@@ -473,13 +513,22 @@ public struct CarrierLockResearchView: View {
                 ForEach(researchVM.savedExperiments) { exp in
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(exp.id).font(.system(.subheadline, design: .monospaced)).bold()
+                            HStack(spacing: 6) {
+                                Text(exp.id).font(.system(.subheadline, design: .monospaced)).bold()
+                                if exp.auditCorrection != nil {
+                                    Badge(text: "AUDIT CORRECTED", color: .purple)
+                                }
+                            }
                             Text("Target: \(exp.targetCarrier) | \(exp.startTimestamp.formatted(date: .abbreviated, time: .shortened))")
                                 .font(.caption).foregroundColor(.secondary)
+                            if let correction = exp.auditCorrection {
+                                Text("Audit Note: \(correction.auditorReason)")
+                                    .font(.caption2).foregroundColor(.purple)
+                            }
                         }
                         Spacer()
-                        Badge(text: exp.outcome.rawValue, color: outcomeBadgeColor(exp.outcome))
-                        Image(systemName: "checkmark.seal.fill").foregroundColor(.blue).help("SHA-256 Validated")
+                        Badge(text: exp.effectiveOutcome.rawValue, color: outcomeBadgeColor(exp.effectiveOutcome))
+                        Badge(text: exp.physicalAttemptConducted ? "Owner-Reported" : "Unperformed", color: exp.physicalAttemptConducted ? .blue : .secondary)
                     }
                     .padding(10)
                     .background(Color(NSColor.controlBackgroundColor).opacity(0.8))
@@ -517,10 +566,11 @@ public struct CarrierLockResearchView: View {
     
     private func outcomeBadgeColor(_ outcome: ExperimentOutcome) -> Color {
         switch outcome {
-        case .carrierRestrictionEnforced: return .green
+        case .notPerformed: return .gray
+        case .carrierRestrictionEnforced: return .orange // Owner-reported observation; not baseband verified
         case .alternateCarrierActivatedLockUnchanged: return .blue
         case .carrierLockChangedAuthorized: return .purple
-        case .unexpectedBehavior: return .orange
+        case .unexpectedBehavior: return .red
         case .inconclusive: return .gray
         }
     }

@@ -95,6 +95,9 @@ final class Phase2ExperimentTests: XCTestCase {
             final: final,
             eSIMInstalled: false,
             cellularDataWorked: false,
+            originalVerizonServiceIntact: true,
+            physicalAttemptConducted: true,
+            hasSupportingEvidence: true,
             rebootPersistenceConfirmed: false
         )
         
@@ -113,6 +116,9 @@ final class Phase2ExperimentTests: XCTestCase {
             final: final,
             eSIMInstalled: true,
             cellularDataWorked: true,
+            originalVerizonServiceIntact: true,
+            physicalAttemptConducted: true,
+            hasSupportingEvidence: true,
             rebootPersistenceConfirmed: false
         )
         
@@ -132,6 +138,9 @@ final class Phase2ExperimentTests: XCTestCase {
             final: final,
             eSIMInstalled: true,
             cellularDataWorked: true,
+            originalVerizonServiceIntact: true,
+            physicalAttemptConducted: true,
+            hasSupportingEvidence: true,
             rebootPersistenceConfirmed: false
         )
         XCTAssertFalse(comparisonUnconfirmed.isPermanentUnlockVerified)
@@ -142,10 +151,55 @@ final class Phase2ExperimentTests: XCTestCase {
             final: final,
             eSIMInstalled: true,
             cellularDataWorked: true,
+            originalVerizonServiceIntact: true,
+            physicalAttemptConducted: true,
+            hasSupportingEvidence: true,
             rebootPersistenceConfirmed: true
         )
         XCTAssertEqual(comparisonConfirmed.classifiedOutcome, .carrierLockChangedAuthorized)
         XCTAssertTrue(comparisonConfirmed.isPermanentUnlockVerified)
+    }
+    
+    func testOutcomeClassification_UnperformedExperiment_ClassifiedAsNotPerformed() {
+        let diag = DeviceDiagnostics(productType: "iPhone19,4", buildVersion: "24B91020", basebandVersion: "1.02.05")
+        let initial = ExperimentBaseline.fromDiagnostics(diag, ownerLockSetting: "SIM Locked")
+        let final = ExperimentBaseline.fromDiagnostics(diag, ownerLockSetting: "SIM Locked")
+        
+        // Physical attempt was NOT conducted (software session only)
+        let comparison = ExperimentComparisonResult(
+            initial: initial,
+            final: final,
+            eSIMInstalled: false,
+            cellularDataWorked: false,
+            originalVerizonServiceIntact: true,
+            physicalAttemptConducted: false,
+            hasSupportingEvidence: false
+        )
+        
+        XCTAssertEqual(comparison.classifiedOutcome, .notPerformed)
+        XCTAssertFalse(comparison.isPermanentUnlockVerified)
+        XCTAssertTrue(comparison.outcomeJustification.contains("No physical alternate-carrier activation attempt was conducted"))
+    }
+    
+    func testOutcomeClassification_IncompleteEvidence_ClassifiedAsInconclusive() {
+        let diag = DeviceDiagnostics(productType: "iPhone19,4", buildVersion: "24B91020", basebandVersion: "1.02.05")
+        let initial = ExperimentBaseline.fromDiagnostics(diag, ownerLockSetting: "SIM Locked")
+        let final = ExperimentBaseline.fromDiagnostics(diag, ownerLockSetting: "SIM Locked")
+        
+        // Physical attempt reported, but zero error messages or evidence recorded
+        let comparison = ExperimentComparisonResult(
+            initial: initial,
+            final: final,
+            eSIMInstalled: false,
+            cellularDataWorked: false,
+            originalVerizonServiceIntact: true,
+            physicalAttemptConducted: true,
+            hasSupportingEvidence: false
+        )
+        
+        XCTAssertEqual(comparison.classifiedOutcome, .inconclusive)
+        XCTAssertFalse(comparison.isPermanentUnlockVerified)
+        XCTAssertTrue(comparison.outcomeJustification.contains("Missing Supporting Evidence") || comparison.outcomeJustification.contains("substantiate"))
     }
     
     func testExperimentManager_PersistenceAndSilentOverwriteProtection() {
@@ -218,5 +272,72 @@ final class Phase2ExperimentTests: XCTestCase {
         XCTAssertEqual(comparison.classifiedOutcome, .unexpectedBehavior)
         XCTAssertTrue(comparison.outcomeJustification.contains("SAFETY VIOLATION"))
         XCTAssertTrue(comparison.cellularConnectivitySummary.contains("CRITICAL ALERT"))
+    }
+    
+    func testViewModel_DefaultErrorText_IsEmpty() {
+        let vm = CarrierLockResearchViewModel(experimentManager: experimentManager)
+        XCTAssertTrue(vm.observedErrorText.isEmpty, "Observed error text must be empty by default to prevent false evidence recording")
+        XCTAssertFalse(vm.physicalDeviceTestAttempted, "Physical test attempt must default to false")
+    }
+    
+    func testDisconnectedHardware_LabelsTelemetryAsCachedOrHistorical() async {
+        let mock = MockDeviceProvider()
+        mock.currentScenario = .disconnected
+        let vm = CarrierLockResearchViewModel(discoveryService: mock, experimentManager: experimentManager)
+        
+        await vm.captureBaseline()
+        if let base = vm.currentBaseline {
+            XCTAssertTrue(base.label.contains("Cached") || base.label.contains("Disconnected") || base.ownerConfirmed.technicianNotes.contains("cached"))
+        }
+    }
+    
+    func testAuditCorrection_EXP1794188993_PreservesOriginalAndAmendsOutcome() throws {
+        let diag = DeviceDiagnostics(productType: "iPhone19,4")
+        let baseline = ExperimentBaseline.fromDiagnostics(diag)
+        
+        // Create the original erroneous experiment record
+        let originalExp = CarrierExperiment(
+            id: "EXP-1794188993",
+            redactedDeviceIdentifier: "••••••••••••12AB",
+            initialBaseline: baseline,
+            targetCarrier: "AT&T",
+            physicalAttemptConducted: false,
+            outcome: .carrierRestrictionEnforced // Erroneously classified
+        )
+        
+        // Save to disk
+        try experimentManager.saveExperiment(originalExp, allowOverwrite: true)
+        
+        // Verify original file on disk still contains the historical outcome (immutable audit trail)
+        let jsonURL = experimentManager.baseDirectory.appendingPathComponent("EXP-1794188993.json")
+        let originalData = try Data(contentsOf: jsonURL)
+        let originalContent = String(data: originalData, encoding: .utf8)!
+        XCTAssertTrue(originalContent.contains("Carrier Restriction Enforced"))
+        
+        // Apply audit correction
+        let correction = ExperimentAuditCorrection(
+            targetExperimentId: "EXP-1794188993",
+            previousOutcome: "Carrier Restriction Enforced",
+            correctedOutcome: .notPerformed,
+            auditorReason: "Audit established that this experiment was executed entirely within the CarrierLab software without a physical alternate-carrier activation attempt on the physical Verizon iPhone Duo."
+        )
+        try experimentManager.saveAuditCorrection(correction)
+        
+        // Reload all experiments
+        let all = experimentManager.loadAllExperiments()
+        guard let exp = all.first(where: { $0.id == "EXP-1794188993" }) else {
+            XCTFail("EXP-1794188993 should be loaded")
+            return
+        }
+        
+        // Verify effective outcome is corrected to Not Performed
+        XCTAssertEqual(exp.effectiveOutcome, .notPerformed)
+        XCTAssertNotNil(exp.auditCorrection)
+        XCTAssertEqual(exp.auditCorrection?.correctedOutcome, .notPerformed)
+        
+        // Verify original file on disk was NOT overwritten or mutated
+        let postData = try Data(contentsOf: jsonURL)
+        let postContent = String(data: postData, encoding: .utf8)!
+        XCTAssertTrue(postContent.contains("Carrier Restriction Enforced"), "Original file must not be silently rewritten")
     }
 }

@@ -103,12 +103,13 @@ def capture_device_baseline(manual_lock: str = "SIM Locked", carrier: str = "Ver
     }
 
 
-def run_phase2_experiment_session(target_carrier: str = "T-Mobile"):
+def run_phase2_experiment_session(target_carrier: str = "T-Mobile", physical_attempt: bool = False, observed_error: str = ""):
     exp_id = f"EXP-{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
     print("=" * 70)
     print(f"CarrierLab — Phase 2: Live Carrier-Lock Enforcement Experiment")
     print(f"Experiment ID: {exp_id}")
     print(f"Target Carrier: {target_carrier}")
+    print(f"Physical On-Device Attempt: {physical_attempt}")
     print("=" * 70)
     
     # Step 1: Capture Initial Baseline
@@ -124,20 +125,23 @@ def run_phase2_experiment_session(target_carrier: str = "T-Mobile"):
     print("    [!] Action: Open Settings > Cellular > Add eSIM on the iPhone Duo.")
     print(f"    [!] Action: Introduce legitimate {target_carrier} eSIM activation profile.")
     
-    # Simulated Observation Record (matches physical bench experiment result on SIM Locked device)
+    # Observation Record
     print("\n[+] Step 3: Recording on-device test observations...")
     esim_installed = False
     cellular_reg = False
     cellular_data = False
     verizon_intact = True
-    error_msgs = [
-        "SIM Not Supported: The SIM card that you currently have installed in this iPhone is from a carrier that is not supported under the activation policy."
-    ]
+    error_msgs = [observed_error] if observed_error else []
+    
+    print(f"    Physical Device Attempt: {physical_attempt}")
     print(f"    eSIM Installed: {esim_installed}")
     print(f"    Cellular Registration on {target_carrier}: {cellular_reg}")
     print(f"    Cellular Data Active: {cellular_data}")
     print(f"    Original Verizon Line Preserved: {verizon_intact}")
-    print(f"    Error Displayed: '{error_msgs[0]}'")
+    if error_msgs:
+        print(f"    Error Displayed: '{error_msgs[0]}'")
+    else:
+        print("    Error Displayed: None recorded.")
     
     # Step 4: Post-Test Baseline
     print("\n[+] Step 4: Interrogating post-test hardware state...")
@@ -145,9 +149,18 @@ def run_phase2_experiment_session(target_carrier: str = "T-Mobile"):
     
     # Step 5: Comparative Analysis
     print("\n[+] Step 5: Running before-and-after comparison diff...")
-    outcome = "Carrier Restriction Enforced"
-    is_unlocked = False
-    justification = f"Activation policy rejected {target_carrier} eSIM. Modem refused non-Verizon cellular registration. Original Verizon service intact."
+    if not physical_attempt:
+        outcome = "Not Performed"
+        is_unlocked = False
+        justification = "No physical alternate-carrier activation attempt was conducted on the physical device. Runner executed in software demonstration mode."
+    elif not error_msgs and not esim_installed and not cellular_data:
+        outcome = "Inconclusive"
+        is_unlocked = False
+        justification = f"Physical attempt was indicated for {target_carrier}, but no supporting error messages or screenshots were recorded."
+    else:
+        outcome = "Carrier Restriction Enforced"
+        is_unlocked = False
+        justification = f"Owner reported physical {target_carrier} attempt was rejected under active Verizon activation policy. (Owner-reported observation; not baseband verified)."
     
     print(f"    Outcome Classification: [{outcome}]")
     print(f"    Permanent Unlock Verified: {is_unlocked}")
@@ -220,10 +233,11 @@ def run_phase2_experiment_session(target_carrier: str = "T-Mobile"):
 ---
 
 ## 3. Alternative Carrier Activation Attempt
+- **Physical On-Device Attempt:** {physical_attempt}
 - **eSIM Installed:** {esim_installed}
 - **Network Registration:** {cellular_reg}
 - **Cellular Data Functional:** {cellular_data}
-- **Reported Errors:** `{error_msgs[0]}`
+- **Reported Errors:** `{error_msgs[0] if error_msgs else 'None recorded'}`
 
 ---
 
@@ -242,5 +256,14 @@ def run_phase2_experiment_session(target_carrier: str = "T-Mobile"):
 
 
 if __name__ == "__main__":
-    carrier = sys.argv[1] if len(sys.argv) > 1 else "T-Mobile"
-    run_phase2_experiment_session(target_carrier=carrier)
+    carrier = "T-Mobile"
+    physical = False
+    err_msg = ""
+    for arg in sys.argv[1:]:
+        if arg == "--physical-attempt":
+            physical = True
+        elif arg.startswith("--error="):
+            err_msg = arg.split("=", 1)[1]
+        elif not arg.startswith("--"):
+            carrier = arg
+    run_phase2_experiment_session(target_carrier=carrier, physical_attempt=physical, observed_error=err_msg)

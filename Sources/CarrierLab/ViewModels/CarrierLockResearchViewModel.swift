@@ -33,7 +33,19 @@ public final class CarrierLockResearchViewModel: ObservableObject {
     @Published public var postTestManualLockSetting: String = "SIM Locked"
     @Published public var technicianID: String = "Lead-Security-Researcher"
     @Published public var technicianNotes: String = ""
-    @Published public var observedErrorText: String = "SIM Not Supported: The SIM card that you currently have installed in this iPhone is from a carrier that is not supported under the activation policy."
+    @Published public var observedErrorText: String = "" // Must be empty by default to prevent false evidence recording
+    @Published public var isUsingSampleErrorTemplate: Bool = false
+    @Published public var physicalDeviceTestAttempted: Bool = false
+    
+    public static let sampleErrorTemplates: [String] = [
+        "SIM Not Supported: The SIM card that you currently have installed in this iPhone is from a carrier that is not supported under the activation policy.",
+        "Cellular Plan Cannot Be Added: This code is no longer valid. Contact your carrier for more information."
+    ]
+    
+    public func insertSampleErrorTemplate(_ template: String) {
+        self.observedErrorText = template
+        self.isUsingSampleErrorTemplate = true
+    }
     
     // Test Observation Flags
     @Published public var eSIMInstalled: Bool = false
@@ -99,7 +111,8 @@ public final class CarrierLockResearchViewModel: ObservableObject {
             redactedDeviceIdentifier: baseline.observed.sanitizedUDID ?? "••••••••••••19,4",
             initialBaseline: baseline,
             targetCarrier: targetCarrier,
-            activationMethod: "iOS Settings > Cellular > Add eSIM > Supported Carrier Setup"
+            activationMethod: "iOS Settings > Cellular > Add eSIM > Supported Carrier Setup",
+            physicalAttemptConducted: self.physicalDeviceTestAttempted
         )
         self.activeStep = .recordingResults
         self.statusMessage = "eSIM Compatibility test initialized for \(targetCarrier). Follow on-device setup."
@@ -117,6 +130,7 @@ public final class CarrierLockResearchViewModel: ObservableObject {
             errors = observedErrorText.components(separatedBy: .newlines).filter { !$0.isEmpty }
         }
         
+        exp.physicalAttemptConducted = self.physicalDeviceTestAttempted
         exp.eSIMInstalled = self.eSIMInstalled
         exp.cellularRegistrationOccurred = self.cellularRegistrationOccurred
         exp.cellularDataWorked = self.cellularDataWorked
@@ -142,13 +156,15 @@ public final class CarrierLockResearchViewModel: ObservableObject {
         
         do {
             let diagnostics = try await discoveryService.retrieveDiagnostics(udid: nil)
+            let isConnected = discoveryService.isConnected
+            let label = isConnected ? "Post-Test Verification Snapshot" : "Historical / Cached Snapshot (Device Disconnected)"
             let final = ExperimentBaseline.fromDiagnostics(
                 diagnostics,
-                label: "Post-Test Verification Snapshot",
+                label: label,
                 ownerLockSetting: postTestManualLockSetting,
                 carrier: "Verizon",
                 technician: technicianID,
-                notes: "Captured immediately following \(targetCarrier) eSIM test."
+                notes: isConnected ? "Captured immediately following \(targetCarrier) eSIM test." : "Device was disconnected at verification time; displaying cached diagnostics."
             )
             self.postTestBaseline = final
             self.currentExperiment?.finalBaseline = final
@@ -166,12 +182,15 @@ public final class CarrierLockResearchViewModel: ObservableObject {
     
     // MARK: - Control 5: Compare Results
     public func compareResults(initial: ExperimentBaseline, final: ExperimentBaseline) {
+        let hasEvidence = !self.observedErrorText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !(self.currentExperiment?.attachedEvidence.isEmpty ?? true)
         let comp = ExperimentComparisonResult(
             initial: initial,
             final: final,
             eSIMInstalled: self.eSIMInstalled,
             cellularDataWorked: self.cellularDataWorked,
             originalVerizonServiceIntact: self.originalVerizonIntact,
+            physicalAttemptConducted: self.physicalDeviceTestAttempted,
+            hasSupportingEvidence: hasEvidence,
             rebootPersistenceConfirmed: self.rebootPersistenceVerified,
             technicianNotes: self.technicianNotes
         )
@@ -217,6 +236,9 @@ public final class CarrierLockResearchViewModel: ObservableObject {
         self.postTestBaseline = nil
         self.currentExperiment = nil
         self.comparisonResult = nil
+        self.physicalDeviceTestAttempted = false
+        self.isUsingSampleErrorTemplate = false
+        self.observedErrorText = ""
         self.eSIMInstalled = false
         self.cellularRegistrationOccurred = false
         self.cellularDataWorked = false
