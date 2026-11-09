@@ -35,3 +35,19 @@ public protocol DeviceDiscoveryProtocol {
     func discoverConnectedDevices() async throws -> [String]
     func retrieveDiagnostics(udid: String?) async throws -> DeviceDiagnostics
 }
+
+extension DeviceDiscoveryProtocol {
+    /// Convenience asynchronous property to determine whether at least one device is currently connected.
+    public var isConnected: Bool {
+        get async {
+            let devices = (try? await discoverConnectedDevices()) ?? []
+            return !devices.isEmpty
+        }
+    }
+    
+    /// Returns whether at least one iOS device is currently detected via this discovery service.
+    public func isDeviceConnected() async -> Bool {
+        let devices = (try? await discoverConnectedDevices()) ?? []
+        return !devices.isEmpty
+    }
+}

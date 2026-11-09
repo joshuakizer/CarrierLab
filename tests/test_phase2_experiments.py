@@ -281,6 +281,21 @@ class TestPhase2Experiments(unittest.TestCase):
         self.assertFalse(diff["is_permanent_unlock_verified"])
         self.assertIn("without corroborating error messages", diff["justification"])
 
+    def test_disconnected_device_baseline_caching_and_labeling(self):
+        # When device is disconnected, cached baseline is created and labeled accordingly
+        cached_diag = {
+            "ProductType": "iPhone19,4",
+            "ProductVersion": "27.2",
+            "BuildVersion": "24B91020",
+            "BasebandVersion": "1.02.05",
+            "SIMStatus": "kCTSIMSupportSIMStatusReady"
+        }
+        baseline = self.mgr.capture_baseline(cached_diag, manual_lock_setting="SIM Locked")
+        self.assertIsNotNone(baseline)
+        self.assertEqual(baseline["device_observed"]["ProductType"], "iPhone19,4")
+        self.assertEqual(baseline["owner_confirmed"]["carrier_lock_setting"], "SIM Locked")
+        self.assertIn("kCTSIMSupportSIMStatusReady denotes that the installed USIM/eSIM application is accepted", baseline["technical_interpretation"]["sim_status_analysis"])
+
     def test_audit_correction_exp1794188993_preserves_original_and_amends_outcome(self):
         diag = {"ProductType": "iPhone19,4", "BuildVersion": "24B91020"}
         base = self.mgr.capture_baseline(diag)

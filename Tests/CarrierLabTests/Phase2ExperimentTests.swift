@@ -286,8 +286,36 @@ final class Phase2ExperimentTests: XCTestCase {
         let vm = CarrierLockResearchViewModel(discoveryService: mock, experimentManager: experimentManager)
         
         await vm.captureBaseline()
+        XCTAssertNotNil(vm.currentBaseline, "Disconnected device should load cached baseline telemetry")
         if let base = vm.currentBaseline {
             XCTAssertTrue(base.label.contains("Cached") || base.label.contains("Disconnected") || base.ownerConfirmed.technicianNotes.contains("cached"))
+        }
+        XCTAssertFalse(vm.isConnected)
+        XCTAssertEqual(vm.connectionStatus, .disconnected)
+    }
+    
+    func testDisconnectedHardware_PostTestVerificationSnapshot_LabelsCached() async {
+        let mock = MockDeviceProvider()
+        let vm = CarrierLockResearchViewModel(discoveryService: mock, experimentManager: experimentManager)
+        
+        // Initial baseline capture when device is connected
+        await vm.captureBaseline()
+        XCTAssertNotNil(vm.currentBaseline)
+        XCTAssertTrue(vm.isConnected)
+        
+        // Disconnect device before post-test verification
+        mock.currentScenario = .disconnected
+        vm.beginTest(targetCarrier: "T-Mobile")
+        vm.recordTestObservations()
+        
+        await vm.verifyAfterTest()
+        XCTAssertNotNil(vm.postTestBaseline, "Disconnected device should generate cached post-test verification baseline")
+        XCTAssertFalse(vm.isConnected)
+        XCTAssertEqual(vm.connectionStatus, .disconnected)
+        
+        if let postBase = vm.postTestBaseline {
+            XCTAssertTrue(postBase.label.contains("Cached") || postBase.label.contains("Disconnected"))
+            XCTAssertTrue(postBase.ownerConfirmed.manualNotes.contains("cached") || postBase.ownerConfirmed.manualNotes.contains("disconnected"))
         }
     }
     
