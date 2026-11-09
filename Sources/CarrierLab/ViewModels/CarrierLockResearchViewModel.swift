@@ -171,6 +171,7 @@ public final class CarrierLockResearchViewModel: ObservableObject {
             final: final,
             eSIMInstalled: self.eSIMInstalled,
             cellularDataWorked: self.cellularDataWorked,
+            originalVerizonServiceIntact: self.originalVerizonIntact,
             rebootPersistenceConfirmed: self.rebootPersistenceVerified,
             technicianNotes: self.technicianNotes
         )

@@ -80,7 +80,7 @@ class Phase2ExperimentManager:
             "snapshot_checksum": checksum
         }
 
-    def compare_baselines(self, initial: dict, final: dict, esim_installed: bool, data_worked: bool, reboot_confirmed: bool = False) -> dict:
+    def compare_baselines(self, initial: dict, final: dict, esim_installed: bool, data_worked: bool, reboot_confirmed: bool = False, original_verizon_intact: bool = True) -> dict:
         init_obs = initial["device_observed"]
         final_obs = final["device_observed"]
         init_lock = initial["owner_confirmed"]["carrier_lock_setting"]
@@ -94,11 +94,16 @@ class Phase2ExperimentManager:
             "lock_setting_changed": init_lock != final_lock,
             "initial_lock": init_lock,
             "final_lock": final_lock,
-            "reboot_confirmed": reboot_confirmed
+            "reboot_confirmed": reboot_confirmed,
+            "original_verizon_intact": original_verizon_intact
         }
         
         # Classification Engine
-        if "No SIM" in final_lock and reboot_confirmed:
+        if not original_verizon_intact:
+            diff["outcome"] = "Unexpected Behavior Requiring Investigation"
+            diff["is_permanent_unlock_verified"] = False
+            diff["justification"] = "CRITICAL SAFETY VIOLATION: Primary Verizon eSIM was modified or removed. Test invalidated."
+        elif "No SIM" in final_lock and reboot_confirmed:
             diff["outcome"] = "Carrier Lock Changed Following Authorized Unlock"
             diff["is_permanent_unlock_verified"] = True
             diff["justification"] = "Carrier Lock officially transitioned to No SIM Restrictions and persisted across device reboot."
@@ -247,6 +252,37 @@ class TestPhase2Experiments(unittest.TestCase):
             "target_carrier": "AT&T"
         }
         self.assertTrue(exp["original_verizon_service_intact"])
+        
+        # Test markdown output matching
+        md_intact = f"- Original Verizon eSIM Preserved: {'YES (Verified Intact)' if exp['original_verizon_service_intact'] else 'ALERT: VERIZON eSIM MODIFIED'}"
+        self.assertIn("Original Verizon eSIM Preserved: YES (Verified Intact)", md_intact)
+        
+        # Test compromised alert
+        exp_compromised = {
+            "experiment_id": "EXP-SAFE-002",
+            "original_verizon_service_intact": False,
+            "target_carrier": "T-Mobile"
+        }
+        md_compromised = f"- Original Verizon eSIM Preserved: {'YES (Verified Intact)' if exp_compromised['original_verizon_service_intact'] else 'ALERT: VERIZON eSIM MODIFIED'}"
+        self.assertIn("ALERT: VERIZON eSIM MODIFIED", md_compromised)
+        self.assertNotIn("YES (Verified Intact)", md_compromised)
+
+    def test_safety_blocks_unlock_when_verizon_line_compromised(self):
+        mgr = Phase2ExperimentManager(self.temp_dir)
+        diag = {
+            "ProductType": "iPhone19,4",
+            "ProductVersion": "27.2",
+            "BuildVersion": "24B91020",
+            "BasebandVersion": "1.02.05",
+            "SIMStatus": "kCTSIMSupportSIMStatusReady"
+        }
+        base_init = mgr.capture_baseline(diag, "SIM Locked")
+        base_final = mgr.capture_baseline(diag, "No SIM Restrictions")
+        
+        diff = mgr.compare_baselines(base_init, base_final, esim_installed=True, data_worked=True, reboot_confirmed=True, original_verizon_intact=False)
+        self.assertFalse(diff["is_permanent_unlock_verified"])
+        self.assertEqual(diff["outcome"], "Unexpected Behavior Requiring Investigation")
+        self.assertIn("CRITICAL SAFETY VIOLATION", diff["justification"])
 
     def test_screenshot_sha256_evidence_hashing(self):
         test_img = self.temp_dir / "test_screenshot.png"

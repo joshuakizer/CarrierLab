@@ -125,9 +125,9 @@ public struct CarrierExperiment: Identifiable, Equatable, Codable {
         ---
         
         ## 1. Safety & Device Protection Guarantees
-        - **Original Verizon eSIM Preserved:** \(originalVerizonServiceIntact ? "YES (Verified Intact)" : "ALERT: VERIZON eSIM MODIFIED")
-        - **Provisioning Interface Used:** Non-invasive supported iOS Settings UI (Zero undocumented API hooks)
-        - **Device Firmware & Baseband Protected:** No unverified exploits, flashing, or jailbreaking executed.
+        - Original Verizon eSIM Preserved: \(originalVerizonServiceIntact ? "YES (Verified Intact)" : "ALERT: VERIZON eSIM MODIFIED")
+        - Provisioning Interface Used: Non-invasive supported iOS Settings UI (Zero undocumented API hooks)
+        - Device Firmware & Baseband Protected: No unverified exploits, flashing, or jailbreaking executed.
         
         ---
         

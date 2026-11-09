@@ -184,4 +184,39 @@ final class Phase2ExperimentTests: XCTestCase {
         let md = experiment.formattedMarkdown()
         XCTAssertTrue(md.contains("Original Verizon eSIM Preserved: YES (Verified Intact)"))
     }
+    
+    func testSafety_OriginalVerizonLineCompromisedAlert() {
+        let diag = DeviceDiagnostics(productType: "iPhone19,4")
+        let baseline = ExperimentBaseline.fromDiagnostics(diag)
+        let experiment = CarrierExperiment(
+            redactedDeviceIdentifier: "••••••••••••12AB",
+            initialBaseline: baseline,
+            originalVerizonServiceIntact: false
+        )
+        
+        XCTAssertFalse(experiment.originalVerizonServiceIntact)
+        let md = experiment.formattedMarkdown()
+        XCTAssertTrue(md.contains("ALERT: VERIZON eSIM MODIFIED"))
+        XCTAssertFalse(md.contains("YES (Verified Intact)"))
+    }
+    
+    func testSafety_OutcomeBlocksUnlockWhenVerizonLineCompromised() {
+        let diag = DeviceDiagnostics(productType: "iPhone19,4")
+        let initial = ExperimentBaseline.fromDiagnostics(diag, ownerLockSetting: "SIM Locked")
+        let final = ExperimentBaseline.fromDiagnostics(diag, ownerLockSetting: "No SIM Restrictions")
+        
+        let comparison = ExperimentComparisonResult(
+            initial: initial,
+            final: final,
+            eSIMInstalled: true,
+            cellularDataWorked: true,
+            originalVerizonServiceIntact: false,
+            rebootPersistenceConfirmed: true
+        )
+        
+        XCTAssertFalse(comparison.isPermanentUnlockVerified)
+        XCTAssertEqual(comparison.classifiedOutcome, .unexpectedBehavior)
+        XCTAssertTrue(comparison.outcomeJustification.contains("SAFETY VIOLATION"))
+        XCTAssertTrue(comparison.cellularConnectivitySummary.contains("CRITICAL ALERT"))
+    }
 }

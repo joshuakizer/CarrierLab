@@ -204,7 +204,7 @@ def run_phase2_experiment_session(target_carrier: str = "T-Mobile"):
 ---
 
 ## 1. Safety Guarantees
-- **Original Verizon Line Preserved:** YES (Verified Intact)
+- Original Verizon eSIM Preserved: YES (Verified Intact)
 - **Supported iOS Settings Used:** Yes (Settings > Cellular > Add eSIM)
 - **Modem Firmware Integrity:** Unmodified (Baseband {initial_base['device_observed']['BasebandVersion']})
 

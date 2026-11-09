@@ -65,6 +65,7 @@ public struct ExperimentComparisonResult: Equatable, Codable {
     /// 1. Final Carrier Lock setting verified as 'No SIM Restrictions'
     /// 2. Alternate carrier successfully registered and passed data test
     /// 3. Persistence manually verified after physical device restart
+    public var originalVerizonServiceIntact: Bool
     public var isPermanentUnlockVerified: Bool
     public var rebootPersistenceConfirmed: Bool
     
@@ -73,6 +74,7 @@ public struct ExperimentComparisonResult: Equatable, Codable {
         final: ExperimentBaseline,
         eSIMInstalled: Bool,
         cellularDataWorked: Bool,
+        originalVerizonServiceIntact: Bool = true,
         rebootPersistenceConfirmed: Bool = false,
         technicianNotes: String = ""
     ) {
@@ -96,10 +98,11 @@ public struct ExperimentComparisonResult: Equatable, Codable {
         self.finalCarrierLock = final.ownerConfirmed.carrierLockSetting
         self.carrierLockChanged = (initial.ownerConfirmed.carrierLockSetting != final.ownerConfirmed.carrierLockSetting)
         
+        self.originalVerizonServiceIntact = originalVerizonServiceIntact
         self.rebootPersistenceConfirmed = rebootPersistenceConfirmed
         
         // Connectivity summary
-        var connectivity = "Original Verizon service: Active. "
+        var connectivity = originalVerizonServiceIntact ? "Original Verizon service: Active. " : "CRITICAL ALERT: Original Verizon service is compromised or inactive! "
         if cellularDataWorked {
             connectivity += "Alternative carrier data: Active. "
         } else {
@@ -108,7 +111,11 @@ public struct ExperimentComparisonResult: Equatable, Codable {
         self.cellularConnectivitySummary = connectivity
         
         // Automated outcome classification engine
-        if finalCarrierLock.localizedCaseInsensitiveContains("No SIM") && rebootPersistenceConfirmed {
+        if !originalVerizonServiceIntact {
+            self.classifiedOutcome = .unexpectedBehavior
+            self.outcomeJustification = "CRITICAL SAFETY VIOLATION: Primary Verizon eSIM was modified, removed, or deactivated. Test invalidated."
+            self.isPermanentUnlockVerified = false
+        } else if finalCarrierLock.localizedCaseInsensitiveContains("No SIM") && rebootPersistenceConfirmed {
             self.classifiedOutcome = .carrierLockChangedAuthorized
             self.outcomeJustification = "Carrier Lock officially transitioned to 'No SIM Restrictions' and persisted after device reboot."
             self.isPermanentUnlockVerified = true
