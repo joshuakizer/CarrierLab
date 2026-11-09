@@ -146,7 +146,7 @@ final class DiagnosticReportTests: XCTestCase {
         let markdown = report.formattedMarkdown()
         XCTAssertTrue(markdown.contains("# CarrierLab Diagnostic & Security Audit Report (Corrected)"))
         XCTAssertTrue(markdown.contains("Category A: Verified Through Executed Tests"))
-        XCTAssertTrue(markdown.contains("Category B: Reported by Device Owner"))
+        XCTAssertTrue(markdown.contains("Category B: Physical-Device Evidence"))
         XCTAssertTrue(markdown.contains("Category C: Supported by Cited Public Research"))
         XCTAssertTrue(markdown.contains("Category D: Hypotheses Requiring Confirmation"))
         XCTAssertTrue(markdown.contains("iPhone15,2"))

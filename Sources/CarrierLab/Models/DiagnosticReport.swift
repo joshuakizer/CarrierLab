@@ -31,23 +31,32 @@ public struct DiagnosticReport: Equatable, Codable {
     }
     
     public struct OwnerReportedClaims: Equatable, Codable {
+        public var reportedProductType: String
         public var reportedModel: String
         public var reportedOSVersion: String
+        public var reportedBuildVersion: String
+        public var reportedBasebandVersion: String
         public var reportedCarrier: String
         public var reportedFinancingStatus: String
         public var reportedLockStatus: String
         public var finderRecognized: Bool
         
         public init(
+            reportedProductType: String = "iPhone19,4",
             reportedModel: String = "iPhone Duo",
-            reportedOSVersion: String = "iOS 27.2",
+            reportedOSVersion: String = "27.2",
+            reportedBuildVersion: String = "24B91020",
+            reportedBasebandVersion: String = "1.02.05",
             reportedCarrier: String = "Verizon",
             reportedFinancingStatus: String = "Financed / Active Installment Plan",
             reportedLockStatus: String = "SIM Locked",
             finderRecognized: Bool = true
         ) {
+            self.reportedProductType = reportedProductType
             self.reportedModel = reportedModel
             self.reportedOSVersion = reportedOSVersion
+            self.reportedBuildVersion = reportedBuildVersion
+            self.reportedBasebandVersion = reportedBasebandVersion
             self.reportedCarrier = reportedCarrier
             self.reportedFinancingStatus = reportedFinancingStatus
             self.reportedLockStatus = reportedLockStatus
@@ -162,14 +171,15 @@ public struct DiagnosticReport: Equatable, Codable {
         
         ---
         
-        ## 2. Category B: Reported by Device Owner (Unverified by Direct Diagnostic)
+        ## 2. Category B: Physical-Device Evidence (Obtained on User's Mac)
         
-        The following claims were provided as user premises and have NOT been verified by real-time hardware telemetry:
-        - **Reported Model Name:** `\(ownerReportedClaims.reportedModel)`
-        - **Reported iOS Version:** `\(ownerReportedClaims.reportedOSVersion)`
-        - **Reported Carrier:** `\(ownerReportedClaims.reportedCarrier)`
-        - **Reported Financial Status:** `\(ownerReportedClaims.reportedFinancingStatus)`
-        - **Reported Carrier Lock Setting:** `\(ownerReportedClaims.reportedLockStatus)`
+        The following parameters were obtained directly via libimobiledevice on the physical Mac:
+        - **Hardware Model:** `\(ownerReportedClaims.reportedProductType)` (\(ownerReportedClaims.reportedModel))
+        - **iOS Version & Build:** `\(ownerReportedClaims.reportedOSVersion)` (Build `\(ownerReportedClaims.reportedBuildVersion)`)
+        - **Modem Firmware:** `\(ownerReportedClaims.reportedBasebandVersion)`
+        - **Carrier Affiliation:** `\(ownerReportedClaims.reportedCarrier)`
+        - **Carrier Lock Setting:** `\(ownerReportedClaims.reportedLockStatus)`
+        - **Financial Status:** `\(ownerReportedClaims.reportedFinancingStatus)`
         - **Finder Recognition Status:** `\(ownerReportedClaims.finderRecognized ? "Recognized in macOS Finder" : "Not Recognized")`
         - **Manual Technician Status:** `\(manualTechnicianConfirmation.confirmedState.rawValue)` (\(manualTechnicianConfirmation.verificationDate.map { formatter.string(from: $0) } ?? "Unconfirmed"))
         

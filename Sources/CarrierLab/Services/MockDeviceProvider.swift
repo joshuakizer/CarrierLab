@@ -3,7 +3,7 @@ import Foundation
 /// Mock device provider for automated testing and SwiftUI preview environments.
 public final class MockDeviceProvider: DeviceDiscoveryProtocol {
     
-    public enum MockScenario {
+    public enum MockScenario: CaseIterable {
         case disconnected
         case iphoneDuoVerizonLive
         case verizonLockedStandard
@@ -26,7 +26,7 @@ public final class MockDeviceProvider: DeviceDiscoveryProtocol {
         switch currentScenario {
         case .disconnected:
             return []
-        case .iphoneDuoVerizonLive, .passcodeLocked, .pairingRequired, .missingFields, .verizonLockedStandard:
+        case .iphoneDuoVerizonLive, .verizonLockedStandard, .missingFields, .passcodeLocked, .pairingRequired:
             return ["00008110-00192837465012AB"]
         }
     }
@@ -35,10 +35,13 @@ public final class MockDeviceProvider: DeviceDiscoveryProtocol {
         switch currentScenario {
         case .disconnected:
             throw DeviceDiscoveryError.deviceNotFound
+            
         case .passcodeLocked:
             throw DeviceDiscoveryError.deviceLockedWithPasscode
+            
         case .pairingRequired:
             throw DeviceDiscoveryError.pairingRequired
+            
         case .missingFields:
             // Handles missing/unavailable fields without inventing values
             return DeviceDiagnostics(
@@ -52,6 +55,9 @@ public final class MockDeviceProvider: DeviceDiscoveryProtocol {
                 activationState: "Unactivated",
                 sanitizedUDID: DeviceSanitizer.sanitizeUDID("00008110-00192837465012AB"),
                 sanitizedSerialNumber: DeviceSanitizer.sanitizeSerialNumber("F2LZA1B2C3D4"),
+                sanitizedIMEI: DeviceSanitizer.sanitizeIMEI("353014109876543")
+            )
+            
         case .iphoneDuoVerizonLive:
             // Verified physical-device evidence provided via Terminal output on user Mac
             return DeviceDiagnostics(
@@ -79,6 +85,7 @@ public final class MockDeviceProvider: DeviceDiscoveryProtocol {
                     "SIMStatus": "kCTSIMSupportSIMStatusReady"
                 ]
             )
+            
         case .verizonLockedStandard:
             return DeviceDiagnostics(
                 productType: "iPhone15,2",
