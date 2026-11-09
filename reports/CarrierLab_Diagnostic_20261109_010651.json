@@ -1,0 +1,75 @@
+{
+  "report_id": "REP-20261109010651",
+  "timestamp": "2026-11-09T01:06:51.766196+00:00",
+  "tool_version": "CarrierLab v1.0.0 (Phase 1 Correction)",
+  "host_environment": {
+    "system": "Linux",
+    "release": "6.12.105+",
+    "version": "#1 SMP Sat Sep 19 19:37:41 UTC 2026",
+    "machine": "x86_64",
+    "processor": "",
+    "python_version": "3.11.2",
+    "developer_tools": {
+      "clang": "/usr/bin/clang",
+      "gcc": "/usr/bin/gcc",
+      "make": "/usr/bin/make",
+      "swift": "Not installed",
+      "xcodebuild": "Not installed",
+      "pkg-config": "/usr/bin/pkg-config",
+      "git": "/usr/bin/git"
+    },
+    "libimobiledevice": {
+      "ideviceinfo": "Not installed",
+      "idevice_id": "Not installed",
+      "usbmuxd": "Not installed",
+      "idevicepair": "Not installed"
+    },
+    "usb_subsystem": {
+      "sysfs_usb_exists": false,
+      "sysfs_devices": [],
+      "usbmuxd_socket_exists": false
+    }
+  },
+  "connection_status": "Disconnected (Antigravity runs on remote Linux sandbox without physical USB access)",
+  "category_a_verified_test_telemetry": {
+    "connection_status": "Disconnected (Antigravity runs on remote Linux sandbox without physical USB access)",
+    "device_observed": {
+      "ProductType": null,
+      "ProductVersion": null,
+      "BuildVersion": null,
+      "BasebandVersion": null,
+      "BasebandStatus": null,
+      "ActivationState": null,
+      "SanitizedUDID": null,
+      "SanitizedSerialNumber": null,
+      "SanitizedIMEI": null
+    },
+    "raw_errors": [
+      "usbmuxd socket probe: UNIX socket not found at /var/run/usbmuxd. usbmuxd daemon is not running.",
+      "libimobiledevice CLI probe: No device detected via libimobiledevice CLI tools."
+    ]
+  },
+  "category_b_owner_reported_claims": {
+    "acquisition_source": "Verified Terminal output via libimobiledevice on user's physical Mac",
+    "product_type": "iPhone19,4",
+    "marketing_name": "iPhone Duo",
+    "product_version": "27.2",
+    "build_version": "24B91020",
+    "baseband_version": "1.02.05",
+    "carrier_lock": "SIM locked",
+    "carrier_name": "Verizon",
+    "financing_status": "Financed (Active installment agreement)",
+    "finder_status": "Recognized in macOS Finder"
+  },
+  "category_c_cited_public_research": {
+    "libimobiledevice": "Protocol library communicating with lockdownd via usbmuxd. Verified as the mechanism that successfully queried iPhone19,4 telemetry.",
+    "seemoo_basetrace": "Framework dissecting AP-to-Baseband IPC. Relevant for analyzing Baseband 1.02.05 protocol format (evaluating whether modem interface uses Qualcomm QMI or Apple ARI/C1).",
+    "userlandkernel_baseband": "Analysis of legacy 32-bit basebands. Confirmed obsolete for iPhone19,4 modern 64-bit architecture with hardware Secure Boot.",
+    "apple_activation_architecture": "Carrier lock enforced via Apple-signed Activation Records (WildcardTickets) verified by Baseband ROM."
+  },
+  "category_d_unverified_hypotheses": [
+    "Modem Architecture for Baseband 1.02.05: The version string '1.02.05' indicates an early-cycle revision typical of a new modem generation (e.g. Apple in-house modem or next-generation baseband). Hypothesis requires confirmation via baseband chipset interrogation.",
+    "Carrier Lock Integrity on Build 24B91020: Enforced via cryptographically signed Activation Tickets verified by the baseband secure boot engine. The hypothesis that local carrier lock enforcement can be circumvented remains unverified and lacks demonstration.",
+    "AP-to-Baseband IPC Endpoint Analysis: Passive monitoring of lockdownd cache on macOS may reveal whether custom Verizon bundle policies or Carrier Prerogatives are applied."
+  ]
+}

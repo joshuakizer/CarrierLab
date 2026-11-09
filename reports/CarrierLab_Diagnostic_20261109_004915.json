@@ -1,0 +1,71 @@
+{
+  "report_id": "REP-20261109004915",
+  "timestamp": "2026-11-09T00:49:15.809694+00:00",
+  "tool_version": "CarrierLab v1.0.0 (Phase 1 Correction)",
+  "host_environment": {
+    "system": "Linux",
+    "release": "6.12.105+",
+    "version": "#1 SMP Sat Sep 19 19:37:41 UTC 2026",
+    "machine": "x86_64",
+    "processor": "",
+    "python_version": "3.11.2",
+    "developer_tools": {
+      "clang": "/usr/bin/clang",
+      "gcc": "/usr/bin/gcc",
+      "make": "/usr/bin/make",
+      "swift": "Not installed",
+      "xcodebuild": "Not installed",
+      "pkg-config": "/usr/bin/pkg-config",
+      "git": "/usr/bin/git"
+    },
+    "libimobiledevice": {
+      "ideviceinfo": "Not installed",
+      "idevice_id": "Not installed",
+      "usbmuxd": "Not installed",
+      "idevicepair": "Not installed"
+    },
+    "usb_subsystem": {
+      "sysfs_usb_exists": false,
+      "sysfs_devices": [],
+      "usbmuxd_socket_exists": false
+    }
+  },
+  "connection_status": "Disconnected (Antigravity runs on remote Linux sandbox without physical USB access)",
+  "category_a_verified_test_telemetry": {
+    "connection_status": "Disconnected (Antigravity runs on remote Linux sandbox without physical USB access)",
+    "device_observed": {
+      "ProductType": null,
+      "ProductVersion": null,
+      "BuildVersion": null,
+      "BasebandVersion": null,
+      "BasebandStatus": null,
+      "ActivationState": null,
+      "SanitizedUDID": null,
+      "SanitizedSerialNumber": null,
+      "SanitizedIMEI": null
+    },
+    "raw_errors": [
+      "usbmuxd socket probe: UNIX socket not found at /var/run/usbmuxd. usbmuxd daemon is not running.",
+      "libimobiledevice CLI probe: No device detected via libimobiledevice CLI tools."
+    ]
+  },
+  "category_b_owner_reported_claims": {
+    "model_name": "iPhone Duo",
+    "os_version": "iOS 27.2",
+    "carrier_name": "Verizon",
+    "financing_status": "Financed (Active installment agreement)",
+    "lock_setting": "SIM locked (Reported in Settings > General > About)",
+    "finder_recognized": "Recognized in macOS Finder"
+  },
+  "category_c_cited_public_research": {
+    "libimobiledevice": "Protocol library communicating with lockdownd via usbmuxd. Read-only query capability.",
+    "seemoo_basetrace": "Framework dissecting AP-to-Baseband IPC (Qualcomm QMI / Apple ARI). Injection requires jailbreak.",
+    "userlandkernel_baseband": "Analysis of legacy 32-bit basebands. Obsolete on 64-bit hardware with Secure Boot.",
+    "apple_activation_architecture": "Carrier lock enforced via Apple-signed Activation Records (WildcardTickets) verified by Baseband ROM."
+  },
+  "category_d_unverified_hypotheses": [
+    "Hardware Model 'iPhone Duo': Apple has never publicly marketed or released a device named 'iPhone Duo'. Unverified hypothesis: either a fictional designation, developer prototype, or user error.",
+    "Operating System 'iOS 27.2': As of late 2024\u20132026, iOS releases span iOS 18/19. Version 27.2 is unverified and contradicts Apple's public release history.",
+    "Local Carrier Lock Circumvention: The hypothesis that a reproducible vulnerability exists to bypass carrier locking without an Apple-signed activation ticket remains unverified."
+  ]
+}

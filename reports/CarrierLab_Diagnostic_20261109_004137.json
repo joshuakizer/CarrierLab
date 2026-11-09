@@ -1,0 +1,52 @@
+{
+  "report_id": "REP-20261109004137",
+  "timestamp": "2026-11-09T00:41:37.664834+00:00",
+  "tool_version": "CarrierLab v1.0.0-phase1",
+  "host_environment": {
+    "system": "Linux",
+    "release": "6.12.105+",
+    "version": "#1 SMP Sat Sep 19 19:37:41 UTC 2026",
+    "machine": "x86_64",
+    "processor": "",
+    "python_version": "3.11.2",
+    "developer_tools": {
+      "clang": "/usr/bin/clang",
+      "gcc": "/usr/bin/gcc",
+      "make": "/usr/bin/make",
+      "swift": "Not installed",
+      "xcodebuild": "Not installed",
+      "pkg-config": "/usr/bin/pkg-config",
+      "git": "/usr/bin/git"
+    },
+    "libimobiledevice": {
+      "ideviceinfo": "Not installed",
+      "idevice_id": "Not installed",
+      "usbmuxd": "Not installed",
+      "idevicepair": "Not installed"
+    },
+    "usb_subsystem": {
+      "sysfs_usb_exists": false,
+      "sysfs_devices": [],
+      "usbmuxd_socket_exists": false
+    }
+  },
+  "connection_status": "Test Interface",
+  "device_diagnostics": {
+    "ProductType": "iPhone15,2",
+    "ProductVersion": "17.5.1",
+    "BuildVersion": "21F79",
+    "BasebandVersion": "2.05.01",
+    "SanitizedUDID": "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u202212AB"
+  },
+  "carrier_lock_confirmation": {
+    "confirmed_state": "SIM Locked",
+    "carrier_name": "Verizon",
+    "financing_status": "Active Installment Plan / Financed",
+    "technician_id": "Researcher-Test",
+    "verification_date": "2026-11-08T16:30:00Z"
+  },
+  "raw_diagnostics_errors": [
+    "Test mock warning"
+  ],
+  "research_notes": "Testing report generator"
+}

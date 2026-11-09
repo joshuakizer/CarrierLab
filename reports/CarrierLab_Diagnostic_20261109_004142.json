@@ -1,0 +1,59 @@
+{
+  "report_id": "REP-20261109004142",
+  "timestamp": "2026-11-09T00:41:42.293091+00:00",
+  "tool_version": "CarrierLab v1.0.0-phase1",
+  "host_environment": {
+    "system": "Linux",
+    "release": "6.12.105+",
+    "version": "#1 SMP Sat Sep 19 19:37:41 UTC 2026",
+    "machine": "x86_64",
+    "processor": "",
+    "python_version": "3.11.2",
+    "developer_tools": {
+      "clang": "/usr/bin/clang",
+      "gcc": "/usr/bin/gcc",
+      "make": "/usr/bin/make",
+      "swift": "Not installed",
+      "xcodebuild": "Not installed",
+      "pkg-config": "/usr/bin/pkg-config",
+      "git": "/usr/bin/git"
+    },
+    "libimobiledevice": {
+      "ideviceinfo": "Not installed",
+      "idevice_id": "Not installed",
+      "usbmuxd": "Not installed",
+      "idevicepair": "Not installed"
+    },
+    "usb_subsystem": {
+      "sysfs_usb_exists": false,
+      "sysfs_devices": [],
+      "usbmuxd_socket_exists": false
+    }
+  },
+  "connection_status": "Disconnected (No USB device or usbmuxd daemon available in container)",
+  "device_diagnostics": {
+    "ProductType": null,
+    "ProductVersion": null,
+    "BuildVersion": null,
+    "BasebandVersion": null,
+    "BasebandStatus": null,
+    "ActivationState": null,
+    "SanitizedUDID": null,
+    "SanitizedSerialNumber": null,
+    "SanitizedIMEI": null
+  },
+  "carrier_lock_confirmation": {
+    "confirmed_state": "SIM Locked",
+    "carrier_name": "Verizon",
+    "financing_status": "Active Installment Plan / Financed",
+    "technician_id": "Senior Security Researcher",
+    "verification_date": "2026-11-09T00:41:42.293028+00:00",
+    "settings_path": "Settings > General > About > Carrier Lock",
+    "notes": "Manual bench confirmation: Device physically inspected. Settings reports 'SIM locked'. Verizon device payment agreement active. Activation policy is carrier-restricted by Apple GSX."
+  },
+  "raw_diagnostics_errors": [
+    "usbmuxd: Socket not found at /var/run/usbmuxd. usbmuxd is not running.",
+    "libimobiledevice CLI: No device detected via libimobiledevice CLI tools."
+  ],
+  "research_notes": "Phase 1 Research Assessment:\n1. libimobiledevice: Standard, reliable userland interface for lockdown queries on compatible macOS/Linux hosts.\n2. seemoo-lab/BaseTrace: Dissects AP-Baseband IPC (QMI for Qualcomm, ARI for Intel/Apple). Injection requires jailbreak.\n3. userlandkernel/baseband-research: Focuses on legacy 32-bit basebands lacking ASLR/Secure Boot; obsolete for modern 64-bit devices.\n4. Carrier Lock Architecture: Enforced via Apple Activation Server signed WildcardTickets verified by the baseband boot ROM. Circumvention without carrier authorization or Apple signature is not possible via known public vulnerabilities."
+}

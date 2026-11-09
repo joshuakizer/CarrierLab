@@ -1,0 +1,56 @@
+{
+  "report_id": "REP-20261109010647",
+  "timestamp": "2026-11-09T01:06:47.222265+00:00",
+  "tool_version": "CarrierLab v1.0.0 (Phase 1 Correction)",
+  "host_environment": {
+    "system": "Linux",
+    "release": "6.12.105+",
+    "version": "#1 SMP Sat Sep 19 19:37:41 UTC 2026",
+    "machine": "x86_64",
+    "processor": "",
+    "python_version": "3.11.2",
+    "developer_tools": {
+      "clang": "/usr/bin/clang",
+      "gcc": "/usr/bin/gcc",
+      "make": "/usr/bin/make",
+      "swift": "Not installed",
+      "xcodebuild": "Not installed",
+      "pkg-config": "/usr/bin/pkg-config",
+      "git": "/usr/bin/git"
+    },
+    "libimobiledevice": {
+      "ideviceinfo": "Not installed",
+      "idevice_id": "Not installed",
+      "usbmuxd": "Not installed",
+      "idevicepair": "Not installed"
+    },
+    "usb_subsystem": {
+      "sysfs_usb_exists": false,
+      "sysfs_devices": [],
+      "usbmuxd_socket_exists": false
+    }
+  },
+  "connection_status": "Disconnected",
+  "category_a_verified_test_telemetry": {
+    "connection_status": "Disconnected",
+    "device_observed": null,
+    "raw_errors": [
+      "Mock socket absent"
+    ]
+  },
+  "category_b_owner_reported_claims": {
+    "acquisition_source": "Verified Terminal output via libimobiledevice on user's physical Mac",
+    "product_type": "iPhone19,4",
+    "marketing_name": "iPhone Duo",
+    "product_version": "27.2",
+    "build_version": "24B91020",
+    "baseband_version": "1.02.05",
+    "carrier_name": "Verizon"
+  },
+  "category_c_cited_public_research": {
+    "libimobiledevice": "Protocol library"
+  },
+  "category_d_unverified_hypotheses": [
+    "Modem Architecture for Baseband 1.02.05 requires chipset confirmation"
+  ]
+}
