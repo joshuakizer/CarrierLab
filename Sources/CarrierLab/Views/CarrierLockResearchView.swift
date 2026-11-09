@@ -116,7 +116,7 @@ public struct CarrierLockResearchView: View {
     }
     
     // MARK: - Subviews: Top Cards
-    private var deviceIdentityCard: View {
+    @ViewBuilder private var deviceIdentityCard: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Image(systemName: "iphone.gen3").foregroundColor(.accentColor)
@@ -141,7 +141,7 @@ public struct CarrierLockResearchView: View {
         .cornerRadius(12)
     }
     
-    private var carrierAuthorizationCard: View {
+    @ViewBuilder private var carrierAuthorizationCard: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Image(systemName: "lock.shield.fill").foregroundColor(.purple)
@@ -165,7 +165,7 @@ public struct CarrierLockResearchView: View {
     }
     
     // MARK: - Step 1: Capture Baseline
-    private var step1BaselineView: View {
+    @ViewBuilder private var step1BaselineView: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Step 1: Capture Initial Baseline")
                 .font(.title3).bold()
@@ -224,7 +224,7 @@ public struct CarrierLockResearchView: View {
     }
     
     // MARK: - Step 2: Test Setup
-    private var step2TestSetupView: View {
+    @ViewBuilder private var step2TestSetupView: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Step 2: Alternate-Carrier eSIM Setup")
                 .font(.title3).bold()
@@ -275,7 +275,7 @@ public struct CarrierLockResearchView: View {
     }
     
     // MARK: - Step 3: Record Results
-    private var step3RecordingResultsView: View {
+    @ViewBuilder private var step3RecordingResultsView: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Step 3: Record On-Device Test Observations")
                 .font(.title3).bold()
@@ -332,7 +332,7 @@ public struct CarrierLockResearchView: View {
     }
     
     // MARK: - Step 4: Post-Test Verify
-    private var step4PostTestVerifyView: View {
+    @ViewBuilder private var step4PostTestVerifyView: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Step 4: Post-Test Hardware Verification")
                 .font(.title3).bold()
@@ -367,7 +367,7 @@ public struct CarrierLockResearchView: View {
     }
     
     // MARK: - Step 5: Comparison View
-    private var step5ComparisonView: View {
+    @ViewBuilder private var step5ComparisonView: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 Text("Step 5: Before-and-After Comparison & Classification")
@@ -422,7 +422,7 @@ public struct CarrierLockResearchView: View {
     }
     
     // MARK: - Step 6: Export Evidence
-    private var step6ExportView: View {
+    @ViewBuilder private var step6ExportView: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Step 6: Export Immutable Evidence Dossier")
                 .font(.title3).bold()
@@ -458,7 +458,7 @@ public struct CarrierLockResearchView: View {
     }
     
     // MARK: - History Section
-    private var experimentHistorySection: View {
+    @ViewBuilder private var experimentHistorySection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("Stored Experiment Audit History").font(.headline)
@@ -490,7 +490,7 @@ public struct CarrierLockResearchView: View {
     }
     
     // MARK: - Attachment Sheet
-    private var attachmentSheetView: View {
+    @ViewBuilder private var attachmentSheetView: some View {
         VStack(spacing: 16) {
             Text("Attach Screenshot Evidence").font(.headline)
             TextField("Local Image Path (e.g. /tmp/sim_error.png)", text: $attachmentPathInput)
