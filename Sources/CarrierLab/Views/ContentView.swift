@@ -6,9 +6,11 @@ import AppKit
 
 public struct ContentView: View {
     @StateObject private var viewModel: CarrierLabViewModel
-    @State private var selectedTab: NavigationItem = .overview
+    @StateObject private var researchVM: CarrierLockResearchViewModel
+    @State private var selectedTab: NavigationItem = .carrierResearch
     
     public enum NavigationItem: String, CaseIterable, Identifiable {
+        case carrierResearch = "Carrier Lock Research"
         case overview = "Device Overview"
         case carrierLock = "Carrier Lock Verification"
         case logs = "Diagnostic Logs"
@@ -19,6 +21,7 @@ public struct ContentView: View {
         
         public var iconName: String {
             switch self {
+            case .carrierResearch: return "antenna.radiowaves.left.and.right"
             case .overview: return "iphone.gen3"
             case .carrierLock: return "lock.shield"
             case .logs: return "terminal"
@@ -28,8 +31,10 @@ public struct ContentView: View {
         }
     }
     
-    public init(viewModel: CarrierLabViewModel? = nil) {
-        _viewModel = StateObject(wrappedValue: viewModel ?? CarrierLabViewModel())
+    public init(viewModel: CarrierLabViewModel? = nil, researchVM: CarrierLockResearchViewModel? = nil) {
+        let vm = viewModel ?? CarrierLabViewModel()
+        _viewModel = StateObject(wrappedValue: vm)
+        _researchVM = StateObject(wrappedValue: researchVM ?? CarrierLockResearchViewModel(discoveryService: vm.discoveryService))
     }
     
     public var body: some View {
@@ -59,6 +64,8 @@ public struct ContentView: View {
             }
         } detail: {
             switch selectedTab {
+            case .carrierResearch:
+                CarrierLockResearchView(researchVM: researchVM, mainVM: viewModel)
             case .overview:
                 DeviceOverviewView(viewModel: viewModel)
             case .carrierLock:
@@ -71,7 +78,7 @@ public struct ContentView: View {
                 ResearchSummaryView()
             }
         }
-        .frame(minWidth: 900, minHeight: 620)
+        .frame(minWidth: 950, minHeight: 650)
     }
 }
 

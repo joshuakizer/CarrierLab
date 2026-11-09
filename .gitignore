@@ -1,0 +1,13 @@
+.DS_Store
+.build/
+Packages/
+*.xcodeproj
+*.xcworkspace
+xcuserdata/
+DerivedData/
+
+# Python cache & temp test reports
+__pycache__/
+*.pyc
+reports/CarrierLab_Diagnostic_*.json
+reports/CarrierLab_Diagnostic_*.md
